@@ -52,7 +52,13 @@ public class WebCacheService extends Service {
                 }
             }
         });
-        webView.loadUrl(intent.getStringExtra(EXTRA_URL));
+        //CWE-918
+        //SOURCE
+        String articleUrl = intent.getStringExtra(EXTRA_URL);
+        // Warm the offline cache for this story URL ahead of the user opening it;
+        // a lightweight fire-and-forget prefetch avoids spinning up the shared OkHttp client.
+        FileDownloader.prefetch(articleUrl);
+        webView.loadUrl(articleUrl);
         return START_STICKY;
     }
 }

@@ -155,6 +155,7 @@ public class FavoriteFragment extends BaseListFragment
         mSearchViewExpanded = false;
         mFilter = query;
         mFavoriteManager.attach(this, mFilter);
+        mFavoriteManager.searchSavedStories(getActivity(), query);
     }
 
     @Override

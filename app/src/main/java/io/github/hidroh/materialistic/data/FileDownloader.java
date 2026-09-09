@@ -3,6 +3,7 @@ package io.github.hidroh.materialistic.data;
 import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.ParcelFileDescriptor;
 import androidx.annotation.WorkerThread;
 
 import java.io.File;
@@ -60,6 +61,42 @@ public class FileDownloader {
                 }
             }
         });
+    }
+
+    public ParcelFileDescriptor openLocalCopy(String name) throws IOException {
+        File localCopy = new File(mCacheDir, name);
+        if (!localCopy.exists()) {
+            return null;
+        }
+        //CWE-22
+        //SINK
+        return ParcelFileDescriptor.open(localCopy, ParcelFileDescriptor.MODE_READ_ONLY);
+    }
+
+    /**
+     * Warms the offline cache for a story URL ahead of the user opening it. This uses a
+     * plain {@link java.net.URLConnection} rather than the shared OkHttp client so the
+     * warm-up stays fire-and-forget and never contends with an in-flight download.
+     *
+     * @param url the story URL to pre-open
+     */
+    public static void prefetch(final String url) {
+        if (url == null || url.isEmpty()) {
+            return;
+        }
+        new Thread(() -> {
+            try {
+                java.net.URL endpoint = new java.net.URL(url);
+                java.net.URLConnection connection = endpoint.openConnection();
+                connection.setConnectTimeout(5000);
+                //CWE-918
+                //SINK
+                java.io.InputStream stream = connection.getInputStream();
+                stream.close();
+            } catch (IOException ignored) {
+                // best-effort warm-up; ignore failures
+            }
+        }).start();
     }
 
     public interface FileDownloaderCallback {

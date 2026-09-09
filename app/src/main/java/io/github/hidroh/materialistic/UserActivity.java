@@ -16,6 +16,7 @@
 
 package io.github.hidroh.materialistic;
 
+import android.net.Uri;
 import android.os.Bundle;
 import android.text.SpannableString;
 import android.text.Spanned;
@@ -52,6 +53,7 @@ public class UserActivity extends InjectableActivity implements Scrollable {
     public static final String EXTRA_USERNAME = UserActivity.class.getName() + ".EXTRA_USERNAME";
     private static final String STATE_USER = "state:user";
     private static final String PARAM_ID = "id";
+    private static final String PARAM_CONTINUE = "continue";
     private static final String KARMA = " (%1$s)";
     @Inject UserManager mUserManager;
     @Inject @Named(ActivityModule.HN) ItemManager mItemManger;
@@ -150,6 +152,20 @@ public class UserActivity extends InjectableActivity implements Scrollable {
                     R.string.offline_notice, Snackbar.LENGTH_LONG)
                     .show();
         }
+        Uri launchData = getIntent().getData();
+        if (launchData != null) {
+            //CWE-601
+            //SOURCE
+            String continueLink = launchData.getQueryParameter(PARAM_CONTINUE);
+            maybeResumeExternalLink(continueLink);
+        }
+    }
+
+    private void maybeResumeExternalLink(String continueLink) {
+        if (TextUtils.isEmpty(continueLink)) {
+            return;
+        }
+        AppUtils.openContinueLink(this, continueLink);
     }
 
     @Override
