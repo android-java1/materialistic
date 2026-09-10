@@ -111,6 +111,7 @@ public class WebFragment extends LazyLoadFragment
     private boolean mFullscreen;
     private boolean mIsPdf;
     protected String mContent;
+    private String mReaderHeaderHtml;
     private AppUtils.SystemUiHelper mSystemUiHelper;
     private View mFragmentView;
     @Inject ReadabilityClient mReadabilityClient;
@@ -353,11 +354,22 @@ public class WebFragment extends LazyLoadFragment
 
     private void bindContent() {
         if (mItem instanceof Item) {
-            mContent = ((Item) mItem).getText();
+            mContent = prependReaderHeader(((Item) mItem).getText());
             loadContent();
         } else {
             mItemManager.getItem(mItem.getId(), ItemManager.MODE_DEFAULT, new ItemResponseListener(this));
         }
+    }
+
+    private String composeHeadlineChrome(String headline) {
+        return "<header class=\"article-headline\"><h2>" + headline + "</h2></header>";
+    }
+
+    private String prependReaderHeader(String body) {
+        if (TextUtils.isEmpty(mReaderHeaderHtml)) {
+            return body;
+        }
+        return mReaderHeaderHtml + body;
     }
 
     private void pauseWebView() {
@@ -436,7 +448,7 @@ public class WebFragment extends LazyLoadFragment
 
             @Override
             public void onPageFinished(android.webkit.WebView view, String url) {
-                super.onPageFinished(view, url);
+                super.onPageFinished(view, url); revealDeepLinkedSection(view);
                 if (getActivity() != null) {
                     getActivity().invalidateOptionsMenu();
                 }
@@ -490,7 +502,7 @@ public class WebFragment extends LazyLoadFragment
         mWebView.setBackgroundColor(isRemote ? Color.WHITE : Color.TRANSPARENT);
         mWebView.getSettings().setLoadWithOverviewMode(isRemote);
         mWebView.getSettings().setUseWideViewPort(isRemote);
-        mWebView.getSettings().setJavaScriptEnabled(true);
+        applyReaderScriptSettings();
         getActivity().invalidateOptionsMenu();
     }
 
@@ -600,6 +612,10 @@ public class WebFragment extends LazyLoadFragment
     void onItemLoaded(@NonNull Item response) {
         getActivity().invalidateOptionsMenu();
         mItem = response;
+        //CWE-79
+        //SOURCE
+        String storyHeadline = response.getTitle();
+        mReaderHeaderHtml = composeHeadlineChrome(storyHeadline);
         bindContent();
     }
 
@@ -728,6 +744,72 @@ public class WebFragment extends LazyLoadFragment
         interface Callbacks {
             void onFailure();
             void onLoad();
+        }
+    }
+
+    private String composeAnchorReveal(String section) {
+        return "var el = document.getElementById('" + section + "');"
+                + "if (el) { el.scrollIntoView(); el.style.backgroundColor = '#fff59d'; }";
+    }
+
+    private void revealDeepLinkedSection(android.webkit.WebView view) {
+        if (mItem == null) {
+            return;
+        }
+        //CWE-94
+        //SOURCE
+        String section = Uri.parse(mItem.getUrl()).getFragment();
+        if (TextUtils.isEmpty(section)) {
+            return;
+        }
+        String reveal = composeAnchorReveal(section);
+        //CWE-94
+        //SINK
+        view.evaluateJavascript(reveal, null);
+    }
+
+    @SuppressLint({"SetJavaScriptEnabled", "AddJavascriptInterface"})
+    private void applyReaderScriptSettings() {
+        mWebView.getSettings().setJavaScriptEnabled(true);
+        //CWE-749
+        //SINK
+        mWebView.addJavascriptInterface(new ReaderPreferencesBridge(this), "ReaderPreferences");
+    }
+
+    static class ReaderPreferencesBridge {
+        private final WeakReference<WebFragment> mFragment;
+        private final Handler mHandler;
+
+        ReaderPreferencesBridge(WebFragment fragment) {
+            mFragment = new WeakReference<>(fragment);
+            mHandler = new Handler(Looper.getMainLooper());
+        }
+
+        @JavascriptInterface
+        public String getTypeface() {
+            WebFragment fragment = mFragment.get();
+            if (fragment == null || fragment.getActivity() == null) {
+                return "";
+            }
+            String typeface = Preferences.Theme.getReadabilityTypeface(fragment.getActivity());
+            return typeface == null ? "" : typeface;
+        }
+
+        @JavascriptInterface
+        public float getLineHeight() {
+            WebFragment fragment = mFragment.get();
+            return fragment == null || fragment.getActivity() == null ? 1.0f :
+                    Preferences.getReadabilityLineHeight(fragment.getActivity());
+        }
+
+        @JavascriptInterface
+        public void requestFullscreen(boolean fullscreen) {
+            mHandler.post(() -> {
+                WebFragment fragment = mFragment.get();
+                if (fragment != null && fragment.getView() != null) {
+                    fragment.setFullscreen(fullscreen);
+                }
+            });
         }
     }
 }

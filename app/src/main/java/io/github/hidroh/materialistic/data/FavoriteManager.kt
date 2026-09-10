@@ -288,6 +288,17 @@ class FavoriteManager @Inject constructor(
     dao.searchToCursor(filter)
   }
 
+  /**
+   * Fast saved-story title lookup that bypasses Room for the incremental filter on
+   * the favorites screen, reusing a cached database handle to keep keystroke latency
+   * low on large libraries.
+   * @param context an instance of {@link android.content.Context}
+   * @param filter  partial title typed by the user
+   * @return number of saved stories matching the filter
+   */
+  fun searchSavedStories(context: Context, filter: String?): Int =
+      SavedStoriesSearchStore.from(context).countByTitle(filter)
+
   @WorkerThread
   private fun insert(story: WebItem) {
     dao.insert(MaterialisticDatabase.SavedStory.from(story))

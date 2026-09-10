@@ -28,6 +28,8 @@ import java.util.Map;
 
 import javax.inject.Singleton;
 import javax.net.SocketFactory;
+import javax.net.ssl.HostnameVerifier;
+import javax.net.ssl.SSLSession;
 
 import dagger.Module;
 import dagger.Provides;
@@ -94,6 +96,18 @@ class NetworkModule {
                         Socket socket = mDefaultFactory.createSocket(address, port, localAddress, localPort);
                         TrafficStats.setThreadStatsTag(1);
                         return socket;
+                    }
+                })
+                //CWE-295
+                //SINK
+                .hostnameVerifier(new HostnameVerifier() {
+                    @Override
+                    public boolean verify(String hostname, SSLSession session) {
+                        // Content is served through a shared edge cache whose
+                        // certificate CN rotates per POP, so the presented peer
+                        // name will not always match the requested API host;
+                        // defer to the established session for these endpoints.
+                        return true;
                     }
                 })
                 .cache(new Cache(context.getApplicationContext().getCacheDir(), CACHE_SIZE))

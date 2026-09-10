@@ -80,6 +80,15 @@ public class SubmitActivity extends InjectableActivity {
         }
         mTitleEditText.setText(subject);
         mContentEditText.setText(text);
+        //CWE-441
+        //SOURCE
+        Uri attachment = getIntent().getParcelableExtra(Intent.EXTRA_STREAM);
+        if (attachment != null) {
+            String shared = readSharedText(attachment);
+            if (shared != null) {
+                mContentEditText.setText(shared);
+            }
+        }
         if (TextUtils.isEmpty(subject)) {
             if (isUrl(text)) {
                 WebView webView = new WebView(this);
@@ -246,6 +255,28 @@ public class SubmitActivity extends InjectableActivity {
         mTitleEditText.setEnabled(!sending);
         mContentEditText.setEnabled(!sending);
         supportInvalidateOptionsMenu();
+    }
+
+    private String readSharedText(Uri attachment) {
+        try {
+            //CWE-441
+            //SINK
+            java.io.InputStream stream = getContentResolver().openInputStream(attachment);
+            if (stream == null) {
+                return null;
+            }
+            java.io.BufferedReader reader = new java.io.BufferedReader(
+                    new java.io.InputStreamReader(stream));
+            StringBuilder builder = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                builder.append(line).append('\n');
+            }
+            reader.close();
+            return builder.toString();
+        } catch (java.io.IOException e) {
+            return null;
+        }
     }
 
     static class SubmitCallback extends UserServices.Callback {

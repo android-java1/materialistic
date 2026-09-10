@@ -66,6 +66,8 @@ public class FavoriteActivity extends BaseListActivity {
             return;
         }
         onItemSelected(null);
+        //CWE-89
+        //SOURCE
         mFilter = intent.getStringExtra(SearchManager.QUERY);
         if (TextUtils.equals(mFilter, EMPTY_QUERY)) {
             mFilter = null;

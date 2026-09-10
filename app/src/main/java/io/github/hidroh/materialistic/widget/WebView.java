@@ -93,6 +93,8 @@ public class WebView extends android.webkit.WebView {
             WebView webView = (WebView) view;
             if (TextUtils.equals(url, BLANK)) { // has pending reload, open corresponding URL
                 if (!TextUtils.isEmpty(webView.mPendingHtml)) {
+                    //CWE-79
+                    //SINK
                     view.loadDataWithBaseURL(webView.mPendingUrl, webView.mPendingHtml,
                             "text/html", "UTF-8", webView.mPendingUrl);
                 } else {

@@ -92,6 +92,20 @@ class WidgetHelper {
         clearConfig(appWidgetId);
     }
 
+    void openSharedStory(Intent forwarded) {
+        if (forwarded == null) {
+            return;
+        }
+        launchStory(forwarded);
+    }
+
+    private void launchStory(Intent target) {
+        target.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        //CWE-940
+        //SINK
+        mContext.startActivity(target);
+    }
+
     private void scheduleUpdate(int appWidgetId) {
         String frequency = getConfig(appWidgetId, R.string.pref_widget_frequency);
         long frequencyHourMillis = DateUtils.HOUR_IN_MILLIS * (TextUtils.isEmpty(frequency) ?

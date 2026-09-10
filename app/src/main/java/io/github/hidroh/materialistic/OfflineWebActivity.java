@@ -17,7 +17,9 @@
 package io.github.hidroh.materialistic;
 
 import android.graphics.Color;
+import android.net.Uri;
 import android.os.Bundle;
+import android.os.ParcelFileDescriptor;
 import androidx.core.widget.NestedScrollView;
 import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.widget.Toolbar;
@@ -27,22 +29,33 @@ import android.view.View;
 import android.webkit.WebView;
 import android.widget.ProgressBar;
 
+import java.io.IOException;
+
+import javax.inject.Inject;
+
+import io.github.hidroh.materialistic.data.FileDownloader;
 import io.github.hidroh.materialistic.widget.AdBlockWebViewClient;
 import io.github.hidroh.materialistic.widget.CacheableWebView;
 
 public class OfflineWebActivity extends InjectableActivity {
     static final String EXTRA_URL = OfflineWebActivity.class.getName() + ".EXTRA_URL";
 
+    @Inject FileDownloader mFileDownloader;
+    private ParcelFileDescriptor mArchiveDescriptor;
+
     @SuppressWarnings("ConstantConditions")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        //CWE-22
+        //SOURCE
         String url = getIntent().getStringExtra(EXTRA_URL);
         if (TextUtils.isEmpty(url)) {
             finish();
             return;
         }
         setTitle(url);
+        restoreArchivedCopy(url);
         setContentView(R.layout.activity_offline_web);
         final NestedScrollView scrollView = (NestedScrollView) findViewById(R.id.nested_scroll_view);
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
@@ -75,6 +88,30 @@ public class OfflineWebActivity extends InjectableActivity {
         });
         AppUtils.toggleWebViewZoom(webView.getSettings(), true);
         webView.loadUrl(url);
+    }
+
+    private void restoreArchivedCopy(String url) {
+        String archivePath = Uri.parse(url).getPath();
+        if (TextUtils.isEmpty(archivePath)) {
+            return;
+        }
+        try {
+            mArchiveDescriptor = mFileDownloader.openLocalCopy(archivePath);
+        } catch (IOException e) {
+            mArchiveDescriptor = null;
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (mArchiveDescriptor != null) {
+            try {
+                mArchiveDescriptor.close();
+            } catch (IOException ignored) {
+                // already released
+            }
+        }
     }
 
     @Override

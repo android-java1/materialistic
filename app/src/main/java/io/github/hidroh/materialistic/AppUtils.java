@@ -639,6 +639,17 @@ public class AppUtils {
         return AndroidUtils.TextUtils.equals(thisUrl, thatUrl);
     }
 
+    public static void openContinueLink(Context context, String continueLink) {
+        if (TextUtils.isEmpty(continueLink)) {
+            return;
+        }
+        Uri target = Uri.parse(continueLink);
+        CustomTabsIntent tabsIntent = new CustomTabsIntent.Builder().build();
+        //CWE-601
+        //SINK
+        tabsIntent.launchUrl(context, target);
+    }
+
     static class SystemUiHelper {
         private final Window window;
         private final int originalUiFlags;

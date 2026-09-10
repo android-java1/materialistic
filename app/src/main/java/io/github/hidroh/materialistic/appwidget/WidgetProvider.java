@@ -30,6 +30,8 @@ import io.github.hidroh.materialistic.R;
 public class WidgetProvider extends AppWidgetProvider {
 
     static final String ACTION_REFRESH_WIDGET = BuildConfig.APPLICATION_ID + ".ACTION_REFRESH_WIDGET";
+    static final String ACTION_OPEN_STORY = BuildConfig.APPLICATION_ID + ".ACTION_OPEN_STORY";
+    static final String EXTRA_STORY_INTENT = BuildConfig.APPLICATION_ID + ".EXTRA_STORY_INTENT";
 
     @Override
     public void onReceive(Context context, Intent intent) {
@@ -45,6 +47,11 @@ public class WidgetProvider extends AppWidgetProvider {
                     widgetHelper.configure(appWidgetId);
                 }
             }
+        } else if (TextUtils.equals(intent.getAction(), ACTION_OPEN_STORY)) {
+            //CWE-940
+            //SOURCE
+            Intent storyIntent = intent.getParcelableExtra(EXTRA_STORY_INTENT);
+            new WidgetHelper(context).openSharedStory(storyIntent);
         } else {
             super.onReceive(context, intent);
         }
